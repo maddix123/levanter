@@ -79,8 +79,7 @@ bash <(curl -fsSL http://bit.ly/43JqREw)
 4. **Clone the Repository and Install Dependencies:**
 
    ```sh
-   git clone https://github.com/lyfe00011/levanter botName
-   cd botName
+   git clone https://github.com/maddix123/levanter cd levanter
    yarn install
    ```
 
