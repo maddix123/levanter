@@ -1,50 +1,44 @@
-const { bot, getJson, getFloor } = require('../lib/')
-const moment = require('moment')
-bot(
-  {
-    pattern: 'weather ?(.*)',
-    desc: 'weather info',
-    type: 'search',
-  },
-  async (message, match) => {
-    if (!match) return await message.send('*Example : weather delhi*')
-    const data = await getJson(
-      `http://api.openweathermap.org/data/2.5/weather?q=${match}&units=metric&appid=060a6bcfa19809c2cd4d97a212b19273&language=en`
-    ).catch(() => {})
-    if (!data) return await message.send(`_${match} not found_`)
-    const { name, timezone, sys, main, weather, visibility, wind } = data
-    const degree = [
-      'N',
-      'NNE',
-      'NE',
-      'ENE',
-      'E',
-      'ESE',
-      'SE',
-      'SSE',
-      'S',
-      'SSW',
-      'SW',
-      'WSW',
-      'W',
-      'WNW',
-      'NW',
-      'NNW',
-    ][getFloor(wind.deg / 22.5 + 0.5) % 16]
-    return await message.send(
-      `*Name :* ${name}\n*Country :* ${sys.country}\n*Weather :* ${
-        weather[0].description
-      }\n*Temp :* ${getFloor(main.temp)}°\n*Feels Like :* ${getFloor(
-        main.feels_like
-      )}°\n*Humidity :* ${main.humidity}%\n*Visibility  :* ${visibility}m\n*Wind* : ${
-        wind.speed
-      }m/s ${degree}\n*Sunrise :* ${moment
-        .utc(sys.sunrise, 'X')
-        .add(timezone, 'seconds')
-        .format('hh:mm a')}\n*Sunset :* ${moment
-        .utc(sys.sunset, 'X')
-        .add(timezone, 'seconds')
-        .format('hh:mm a')}`
-    )
-  }
-)
+import axios from 'axios';
+import { channelInfo } from '../lib/messageConfig.js';
+export default {
+    command: 'weather',
+    aliases: ['forecast', 'climate'],
+    category: 'info',
+    description: 'Get the current weather for a specific city!',
+    usage: '.weather <city>',
+    async handler(sock, message, args, context) {
+        const chatId = context.chatId || message.key.remoteJid;
+        const city = args.join(' ').trim();
+        if (!city) {
+            return await sock.sendMessage(chatId, {
+                text: "*Please provide a place to search.*\nExample: .weather Karachi",
+                ...channelInfo
+            }, { quoted: message });
+        }
+        try {
+            const apiKey = '060a6bcfa19809c2cd4d97a212b19273';
+            const response = await axios.get(`https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(city)}&units=metric&appid=${apiKey}`);
+            const weather = response.data;
+            const weatherText = `ʜᴇʀᴇ ɪs ʏᴏᴜʀ ᴘʟᴀᴄᴇ ᴡᴇᴀᴛʜᴇʀ\n\n` +
+                `「 🌅 」ᴘʟᴀᴄᴇ: ${weather.name}\n` +
+                `「 🗺️ 」ᴄᴏᴜɴᴛʀʏ: ${weather.sys.country}\n` +
+                `「 🌤️ 」ᴠɪᴇᴡ: ${weather.weather[0].description}\n` +
+                `「 🌡️ 」ᴛᴇᴍᴘᴇʀᴀᴛᴜʀᴇ: ${weather.main.temp}°C\n` +
+                `「 💠 」ᴍɪɴɪᴍᴜᴍ ᴛᴇᴍᴘᴇʀᴀᴛᴜʀᴇ: ${weather.main.temp_min}°C\n` +
+                `「 🔥 」ᴍᴀxɪᴍᴜᴍ ᴛᴇᴍᴘᴇʀᴀᴛᴜʀᴇ: ${weather.main.temp_max}°C\n` +
+                `「 💦 」ʜᴜᴍɪᴅɪᴛʏ: ${weather.main.humidity}%\n` +
+                `「 🌬️ 」ᴡɪɴᴅ sᴘᴇᴇᴅ: ${weather.wind.speed} km/h`;
+            await sock.sendMessage(chatId, {
+                text: weatherText,
+                ...channelInfo
+            }, { quoted: message });
+        }
+        catch (error) {
+            console.error('Weather plugin error:', error);
+            await sock.sendMessage(chatId, {
+                text: '❌ Sorry, I could not fetch the weather. Make sure the place name is correct.',
+                ...channelInfo
+            }, { quoted: message });
+        }
+    }
+};
